@@ -17,14 +17,18 @@ class TemperatureSensors(Thing):
     """A Temperature sensor which updates its measurement every few seconds."""
 
     def __init__(self, device, number):
+        self.device = str(device)
+        self.id = 'urn:dev:ops:'+str(device)
+        self.name = 'Temperature Sensor '+str(number)
+        logging.debug('generated new thing id:%s, name:%s', self.id, self.name)
         Thing.__init__(
             self,
-            'urn:dev:ops:'+str(device),
-            'Temperature Sensor '+str(number),
+            self.id,
+            self.name,
             ['TemperatureSensor'],
             'a web connected temperature sensor'
         )
-        self.device = device
+
         self.level = Value(0.0)
         self.add_property(
             Property(self,
@@ -39,7 +43,7 @@ class TemperatureSensors(Thing):
                          'readOnly': True,
                      }))
 
-        logging.debug('starting the sensor update looping task for: '+str(self.device))
+        logging.debug('starting the sensor update looping task for: '+self.id)
         self.timer = tornado.ioloop.PeriodicCallback(
             self.update_level,
             30000
@@ -48,7 +52,7 @@ class TemperatureSensors(Thing):
 
     def update_level(self):
         new_level = read_one(self.device)
-        logging.debug('setting new temperature level: %s of %s', new_level, device)
+        logging.debug('setting new temperature level: %s of %s', new_level, self.id)
         self.level.notify_of_external_update(new_level)
 
 
@@ -82,14 +86,6 @@ def read_one(temp_sensor_id):
         return temperature
     except:
         logging.debug("not able to read from: ",temp_sensor_id)
-
-
-devices = get_devices()
-num = 0
-for device in devices:
-    num += 1
-    sensor = TemperatureSensors(device,num)
-    things_list.append(sensor)
 #********************** for multiple_ds18b20 ********************
 
 
@@ -98,6 +94,13 @@ def run_server():
     If adding more than one thing, use MultipleThings() with a name.
     In the single thing case, the thing's name will be broadcast.
     """
+    devices = get_devices()
+    num = 0
+    for device in devices:
+        num += 1
+        sensor = TemperatureSensors(device,num)
+        things_list.append(sensor)
+
     server = WebThingServer(MultipleThings(things_list,
                                            'TemperatureDevice'),
                             port=8888)
